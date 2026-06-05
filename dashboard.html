@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Export Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181b24;
+    --surface2: #1e2130;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --hint: #374151;
+    --green: #22c55e;
+    --green-bg: rgba(34,197,94,0.1);
+    --amber: #f59e0b;
+    --amber-bg: rgba(245,158,11,0.1);
+    --red: #ef4444;
+    --red-bg: rgba(239,68,68,0.1);
+    --blue: #60a5fa;
+    --blue-bg: rgba(96,165,250,0.1);
+    --accent: #6366f1;
+    --accent-glow: rgba(99,102,241,0.15);
+    --group-color: #a78bfa;
+    --group-bg: rgba(167,139,250,0.12);
+    --personal-color: #34d399;
+    --personal-bg: rgba(52,211,153,0.12);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── Topbar ── */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(15,17,23,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, #25d366, #128c7e);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 18px; height: 18px; fill: white; }
+  .logo-text { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+  .logo-text span { color: var(--muted); font-weight: 400; }
+
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .source-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+  }
+  .source-badge.drive { color: var(--green); border-color: rgba(34,197,94,0.3); background: var(--green-bg); }
+  .source-badge.demo { color: var(--amber); border-color: rgba(245,158,11,0.3); background: var(--amber-bg); }
+
+  .refresh-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .refresh-btn:hover { background: var(--accent); border-color: var(--accent); color: white; }
+  .refresh-btn svg { width: 14px; height: 14px; }
+  .refresh-btn.loading svg { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .last-sync { font-size: 12px; color: var(--muted); }
+
+  /* ── Stats row ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    padding: 24px 28px 0;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 10px 10px 0 0;
+  }
+  .stat-card.total::before { background: var(--accent); }
+  .stat-card.exported::before { background: var(--green); }
+  .stat-card.failed::before { background: var(--red); }
+  .stat-card.pending::before { background: var(--amber); }
+  .stat-card.size::before { background: var(--blue); }
+
+  .stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .stat-value {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-card.total .stat-value { color: var(--text); }
+  .stat-card.exported .stat-value { color: var(--green); }
+  .stat-card.failed .stat-value { color: var(--red); }
+  .stat-card.pending .stat-value { color: var(--amber); }
+  .stat-card.size .stat-value { color: var(--blue); font-size: 20px; }
+  .stat-sub { font-size: 11px; color: var(--muted); }
+
+  .progress-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 99px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: var(--green);
+    transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  /* ── Columns ── */
+  .columns-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding: 20px 28px 28px;
+  }
+
+  .col-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 280px);
+    min-height: 400px;
+  }
+
+  .col-header {
+    padding: 16px 18px 0;
+    flex-shrink: 0;
+  }
+  .col-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .col-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .col-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+  .group-dot { background: var(--group-color); }
+  .personal-dot { background: var(--personal-color); }
+  .col-count {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .group-count { background: var(--group-bg); color: var(--group-color); }
+  .personal-count { background: var(--personal-bg); color: var(--personal-color); }
+
+  /* Filter bar */
+  .filter-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .filter-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 7px 11px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .filter-input:focus { border-color: var(--accent); }
+  .filter-input::placeholder { color: var(--muted); }
+
+  .status-filter {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    padding: 7px 8px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .sort-btns {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+  .sort-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    padding: 5px 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .sort-btn:hover { border-color: var(--border2); color: var(--text); }
+  .sort-btn.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
+
+  .col-divider { height: 1px; background: var(--border); }
+
+  /* Chat list */
+  .chat-list {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border2) transparent;
+  }
+  .chat-list::-webkit-scrollbar { width: 4px; }
+  .chat-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .chat-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--border);
+    cursor: default;
+    transition: background 0.1s;
+    animation: fadeIn 0.2s ease both;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .chat-item:hover { background: var(--surface2); }
+  .chat-item:last-child { border-bottom: none; }
+
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600;
+    flex-shrink: 0;
+    letter-spacing: 0;
+  }
+  .avatar-group { background: var(--group-bg); color: var(--group-color); }
+  .avatar-personal { background: var(--personal-bg); color: var(--personal-color); }
+
+  .chat-info { flex: 1; min-width: 0; }
+  .chat-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .chat-meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .chat-right { flex-shrink: 0; text-align: right; }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .status-pill .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .status-exported { background: var(--green-bg); color: var(--green); }
+  .status-exported .dot { background: var(--green); }
+  .status-failed { background: var(--red-bg); color: var(--red); }
+  .status-failed .dot { background: var(--red); }
+  .status-pending { background: var(--amber-bg); color: var(--amber); }
+  .status-pending .dot { background: var(--amber); }
+  .status-in_progress { background: var(--blue-bg); color: var(--blue); }
+  .status-in_progress .dot { background: var(--blue); }
+  .status-unknown { background: var(--hint); color: var(--muted); }
+  .status-unknown .dot { background: var(--muted); }
+
+  .chat-size {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  /* Error tooltip */
+  .error-tip {
+    font-size: 10px;
+    color: var(--red);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--muted);
+  }
+  .empty-state svg { width: 32px; height: 32px; opacity: 0.3; margin-bottom: 12px; }
+  .empty-state p { font-size: 13px; }
+
+  /* Loading skeleton */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+    height: 12px;
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  .skeleton-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .skeleton-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Fetching overlay */
+  .fetching-bar {
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), #818cf8, var(--accent));
+    background-size: 200% 100%;
+    animation: slide 1.2s infinite linear;
+    display: none;
+  }
+  .fetching-bar.active { display: block; }
+  @keyframes slide { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .stats-row { grid-template-columns: repeat(3, 1fr); }
+    .columns-wrapper { grid-template-columns: 1fr; }
+    .col-panel { max-height: 50vh; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+    </div>
+    <div class="logo-text">WhatsApp exports <span>/ dashboard</span></div>
+  </div>
+  <div class="topbar-right">
+    <span class="last-sync" id="lastSync">Loading...</span>
+    <span class="source-badge" id="sourceBadge">—</span>
+    <button class="refresh-btn" id="refreshBtn" onclick="loadData(true)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+      </svg>
+      Refresh
+    </button>
+  </div>
+</div>
+
+<!-- Progress bar -->
+<div class="fetching-bar" id="fetchingBar"></div>
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-card total">
+    <div class="stat-label">Total chats</div>
+    <div class="stat-value" id="statTotal">—</div>
+    <div class="stat-sub" id="statSub">groups + personal</div>
+  </div>
+  <div class="stat-card exported">
+    <div class="stat-label">Exported</div>
+    <div class="stat-value" id="statExported">—</div>
+    <div class="stat-sub" id="statPct">—</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+  <div class="stat-card failed">
+    <div class="stat-label">Failed</div>
+    <div class="stat-value" id="statFailed">—</div>
+    <div class="stat-sub">retry possible</div>
+  </div>
+  <div class="stat-card pending">
+    <div class="stat-label">Pending</div>
+    <div class="stat-value" id="statPending">—</div>
+    <div class="stat-sub">not yet done</div>
+  </div>
+  <div class="stat-card size">
+    <div class="stat-label">Drive size</div>
+    <div class="stat-value" id="statSize">—</div>
+    <div class="stat-sub">total uploaded</div>
+  </div>
+</div>
+
+<!-- Two columns -->
+<div class="columns-wrapper">
+
+  <!-- Group chats -->
+  <div class="col-panel">
+    <div class="col-header">
+      <div class="col-title-row">
+        <div class="col-title">
+          <span class="col-dot group-dot"></span>
+          Group chats
+          <span class="col-count group-count" id="groupCount">0</span>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <input class="filter-input" type="text" placeholder="Search groups..." id="groupSearch" oninput="renderList('group')">
+        <select class="status-filter" id="groupStatus" onchange="renderList('group')">
+          <option value="">All</option>
+          <option value="exported">Exported</option>
+          <option value="failed">Failed</option>
+          <option value="pending">Pending</option>
+        </select>
+      </div>
+      <div class="sort-btns">
+        <button class="sort-btn active" id="gSort-name" onclick="setSort('group','name')">A→Z</button>
+        <button class="sort-btn" id="gSort-size" onclick="setSort('group','size')">Size</button>
+        <button class="sort-btn" id="gSort-files" onclick="setSort('group','files')">Files</button>
+        <button class="sort-btn" id="gSort-date" onclick="setSort('group','date')">Date</button>
+        <button class="sort-btn" id="gSort-status" onclick="setSort('group','status')">Status</button>
+      </div>
+    </div>
+    <div class="col-divider"></div>
+    <div class="chat-list" id="groupList">
+      <div class="skeleton-row"><div class="skeleton skeleton-avatar"></div><div style="flex:1"><div class="skeleton" style="width:60%;margin-bottom:6px"></div><div class="skeleton" style="width:40%"></div></div></div>
+      <div class="skeleton-row"><div class="skeleton skeleton-avatar"></div><div style="flex:1"><div class="skeleton" style="width:75%;margin-bottom:6px"></div><div class="skeleton" style="width:35%"></div></div></div>
+      <div class="skeleton-row"><div class="skeleton skeleton-avatar"></div><div style="flex:1"><div class="skeleton" style="width:50%;margin-bottom:6px"></div><div class="skeleton" style="width:45%"></div></div></div>
+    </div>
+  </div>
+
+  <!-- Personal chats -->
+  <div class="col-panel">
+    <div class="col-header">
+      <div class="col-title-row">
+        <div class="col-title">
+          <span class="col-dot personal-dot"></span>
+          Personal chats
+          <span class="col-count personal-count" id="personalCount">0</span>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <input class="filter-input" type="text" placeholder="Search contacts..." id="personalSearch" oninput="renderList('personal')">
+        <select class="status-filter" id="personalStatus" onchange="renderList('personal')">
+          <option value="">All</option>
+          <option value="exported">Exported</option>
+          <option value="failed">Failed</option>
+          <option value="pending">Pending</option>
+        </select>
+      </div>
+      <div class="sort-btns">
+        <button class="sort-btn active" id="pSort-name" onclick="setSort('personal','name')">A→Z</button>
+        <button class="sort-btn" id="pSort-size" onclick="setSort('personal','size')">Size</button>
+        <button class="sort-btn" id="pSort-files" onclick="setSort('personal','files')">Files</button>
+        <button class="sort-btn" id="pSort-date" onclick="setSort('personal','date')">Date</button>
+        <button class="sort-btn" id="pSort-status" onclick="setSort('personal','status')">Status</button>
+      </div>
+    </div>
+    <div class="col-divider"></div>
+    <div class="chat-list" id="personalList">
+      <div class="skeleton-row"><div class="skeleton skeleton-avatar"></div><div style="flex:1"><div class="skeleton" style="width:55%;margin-bottom:6px"></div><div class="skeleton" style="width:38%"></div></div></div>
+      <div class="skeleton-row"><div class="skeleton skeleton-avatar"></div><div style="flex:1"><div class="skeleton" style="width:70%;margin-bottom:6px"></div><div class="skeleton" style="width:42%"></div></div></div>
+      <div class="skeleton-row"><div class="skeleton skeleton-avatar"></div><div style="flex:1"><div class="skeleton" style="width:45%;margin-bottom:6px"></div><div class="skeleton" style="width:55%"></div></div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let allData = { groups: [], personal: [] };
+  let sortState = { group: 'name', personal: 'name' };
+
+  function initials(name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.slice(0,2).toUpperCase();
+  }
+
+  function statusPill(status) {
+    const labels = { exported: 'Exported', failed: 'Failed', pending: 'Pending', in_progress: 'In progress', unknown: 'Unknown' };
+    const label = labels[status] || status;
+    return `<span class="status-pill status-${status}"><span class="dot"></span>${label}</span>`;
+  }
+
+  function setSort(type, field) {
+    sortState[type] = field;
+    const prefix = type === 'group' ? 'g' : 'p';
+    ['name','size','files','date','status'].forEach(f => {
+      const btn = document.getElementById(`${prefix}Sort-${f}`);
+      if (btn) btn.classList.toggle('active', f === field);
+    });
+    renderList(type);
+  }
+
+  function getFiltered(type) {
+    const items = type === 'group' ? allData.groups : allData.personal;
+    const search = document.getElementById(type === 'group' ? 'groupSearch' : 'personalSearch').value.toLowerCase();
+    const statusFilter = document.getElementById(type === 'group' ? 'groupStatus' : 'personalStatus').value;
+    return items.filter(c => {
+      const matchSearch = !search || c.name.toLowerCase().includes(search);
+      const matchStatus = !statusFilter || c.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }
+
+  function getSorted(items, type) {
+    const field = sortState[type];
+    return [...items].sort((a, b) => {
+      if (field === 'name') return a.name.localeCompare(b.name);
+      if (field === 'size') return (b.size_bytes || 0) - (a.size_bytes || 0);
+      if (field === 'files') return (b.file_count || 0) - (a.file_count || 0);
+      if (field === 'date') return (b.latest_date || '').localeCompare(a.latest_date || '');
+      if (field === 'status') {
+        const order = { exported:0, in_progress:1, pending:2, failed:3, unknown:4 };
+        return (order[a.status]||9) - (order[b.status]||9);
+      }
+      return 0;
+    });
+  }
+
+  function renderList(type) {
+    const containerId = type === 'group' ? 'groupList' : 'personalList';
+    const container = document.getElementById(containerId);
+    const filtered = getSorted(getFiltered(type), type);
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <p>No chats found</p>
+      </div>`;
+      return;
+    }
+
+    const html = filtered.map((chat, i) => {
+      const av = initials(chat.name);
+      const avatarClass = type === 'group' ? 'avatar-group' : 'avatar-personal';
+      const meta = chat.file_count > 0
+        ? `${chat.file_count} file${chat.file_count > 1 ? 's' : ''} · ${chat.size_human}`
+        : (chat.status === 'pending' ? 'Export pending' : 'No files');
+      const dateStr = chat.latest_date
+        ? `<div style="font-size:10px;color:var(--muted);margin-top:3px">${chat.latest_date}</div>`
+        : '';
+      const errorHtml = (chat.status === 'failed' && chat.error)
+        ? `<div class="error-tip" title="${chat.error}">${chat.error}</div>`
+        : '';
+      return `<div class="chat-item" style="animation-delay:${Math.min(i * 0.02, 0.3)}s">
+        <div class="avatar ${avatarClass}">${av}</div>
+        <div class="chat-info">
+          <div class="chat-name">${chat.name}</div>
+          <div class="chat-meta">${meta}</div>
+          ${errorHtml}
+        </div>
+        <div class="chat-right">
+          ${statusPill(chat.status)}
+          ${dateStr}
+        </div>
+      </div>`;
+    }).join('');
+
+    container.innerHTML = html;
+  }
+
+  function updateStats(stats) {
+    document.getElementById('statTotal').textContent = stats.total;
+    document.getElementById('statExported').textContent = stats.exported;
+    document.getElementById('statFailed').textContent = stats.failed;
+    document.getElementById('statPending').textContent = stats.pending;
+    document.getElementById('statSize').textContent = stats.total_size || '—';
+    document.getElementById('statSub').textContent = `${stats.groups_count} groups · ${stats.personal_count} personal`;
+
+    const pct = stats.total > 0 ? Math.round((stats.exported / stats.total) * 100) : 0;
+    document.getElementById('statPct').textContent = `${pct}% complete`;
+    document.getElementById('progressFill').style.width = pct + '%';
+
+    document.getElementById('groupCount').textContent = stats.groups_count;
+    document.getElementById('personalCount').textContent = stats.personal_count;
+  }
+
+  async function loadData(forceRefresh = false) {
+    const btn = document.getElementById('refreshBtn');
+    const bar = document.getElementById('fetchingBar');
+    btn.classList.add('loading');
+    bar.classList.add('active');
+
+    const endpoint = forceRefresh ? '/api/refresh' : '/api/data';
+
+    try {
+      const res = await fetch(endpoint);
+      if (!res.ok) throw new Error('Server error ' + res.status);
+      const data = await res.json();
+
+      allData = { groups: data.groups || [], personal: data.personal || [] };
+
+      updateStats(data.stats || {});
+
+      const badge = document.getElementById('sourceBadge');
+      if (data.source === 'drive') {
+        badge.textContent = 'Drive live';
+        badge.className = 'source-badge drive';
+      } else if (data.source === 'demo') {
+        badge.textContent = 'Demo mode';
+        badge.className = 'source-badge demo';
+      } else {
+        badge.textContent = 'DB only';
+        badge.className = 'source-badge';
+      }
+
+      const syncTime = data.fetched_at ? new Date(data.fetched_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : '—';
+      document.getElementById('lastSync').textContent = `Synced at ${syncTime}`;
+
+      renderList('group');
+      renderList('personal');
+
+    } catch (err) {
+      document.getElementById('groupList').innerHTML = `<div class="empty-state"><p style="color:var(--red)">Server se connect nahi ho saka.<br><small>dashboard_server.py chal raha hai?</small></p></div>`;
+      document.getElementById('personalList').innerHTML = '';
+      document.getElementById('lastSync').textContent = 'Connection failed';
+    }
+
+    btn.classList.remove('loading');
+    bar.classList.remove('active');
+  }
+
+  // Auto-refresh every 2 minutes
+  loadData();
+  setInterval(() => loadData(false), 120000);
+</script>
+</body>
+</html>
