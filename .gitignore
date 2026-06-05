@@ -1,0 +1,52 @@
+# Python caches and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+.venv/
+
+# Distribution / build
+build/
+dist/
+*.egg-info/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Data and exports (do not commit large blobs or sensitive data)
+data/
+exports/
+
+# Credentials / tokens
+credentials.json
+data/drive_token.json
+.env
+*.pem
+*.key
+
+# ADB / device dumps
+data/*.xml
+data/*.png
+data/*.db
+share_dump.xml
+
+# Archives
+*.zip
+
+# Misc
+*.bak
+*.tmp
